@@ -67,13 +67,16 @@ source "${VENV_DIR}/bin/activate"
 info "Virtual environment activated."
 
 # =============================================================================
-# 4. Install PyTorch (NVIDIA CUDA 13.0)
+# 4. Install PyTorch (NVIDIA CUDA 12.8)
 # =============================================================================
-info "Installing PyTorch with CUDA 13.0 support..."
+info "Installing PyTorch with CUDA 12.8 support..."
 pip install --upgrade pip --quiet
 
+# cu130 wheels do not exist yet; cu128 is the latest stable CUDA index.
+# Use --index-url as primary so pip never silently falls back to a CPU-only
+# PyPI build when no CUDA wheel is found.
 pip install torch torchvision torchaudio \
-  --extra-index-url https://download.pytorch.org/whl/cu130
+  --index-url https://download.pytorch.org/whl/cu128
 
 # Quick CUDA sanity check
 info "Verifying CUDA availability..."
@@ -86,7 +89,8 @@ else:
     print("  ✗ CUDA not available. Check your NVIDIA driver and CUDA installation.")
     print("    If you see 'Torch not compiled with CUDA enabled', run:")
     print("      pip uninstall torch torchvision torchaudio")
-    print("    Then re-run this script.")
+    print("    Then re-run this script with the correct CUDA index:")
+    print("      pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128")
 EOF
 
 # =============================================================================

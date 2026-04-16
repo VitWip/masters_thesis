@@ -33,11 +33,35 @@ command -v git >/dev/null 2>&1 || error "git is not installed."
 # - libGLESv2.so.2 for mediapipe (PersonMaskUltra V2)
 # Required by: comfyui-easy-use, comfyui-impact-pack, comfyui-rvtools_v2, ComfyUI_LayerStyle_Advance
 # =============================================================================
+apt_update_with_retries() {
+  local max_attempts=4
+  local attempt=1
+
+  while (( attempt <= max_attempts )); do
+    info "Running apt-get update (attempt ${attempt}/${max_attempts})..."
+    if sudo apt-get -o Acquire::Retries=3 -o Acquire::By-Hash=yes update -qq; then
+      return 0
+    fi
+
+    warn "apt-get update failed (attempt ${attempt}/${max_attempts}). Cleaning apt cache and retrying..."
+    sudo apt-get clean || true
+    sudo rm -rf /var/lib/apt/lists/* || true
+    ((attempt++))
+  done
+
+  return 1
+}
+
 info "Installing system dependencies (OpenCV + MediaPipe)..."
 if command -v apt-get >/dev/null 2>&1; then
-  sudo apt-get update -qq
-  sudo apt-get install -y -qq libgl1 libglib2.0-0 libsm6 libxrender1 libxext6 libgles2 libegl1
-  info "System dependencies installed."
+  if apt_update_with_retries; then
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+      libgl1 libglib2.0-0 libsm6 libxrender1 libxext6 libgles2 libegl1
+    info "System dependencies installed."
+  else
+    warn "Could not refresh apt indexes after multiple attempts (likely temporary mirror sync/hash mismatch)."
+    warn "Skipping system deps for now. Re-run later or switch Ubuntu mirror if cv2/mediapipe fails."
+  fi
 else
   warn "apt-get not found — skipping system deps. Install libgl1 libgles2 libegl1 manually if cv2/mediapipe fails."
 fi
